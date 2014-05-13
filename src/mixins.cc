@@ -20,6 +20,9 @@
 #include <nan.h>
 #include "./mixins.h"
 
+#define LOCAL_NAME "com.chocolat.mixins2.client"
+#define REMOTE_NAME "com.chocolat.mixins2.server"
+
 using namespace node;
 using namespace v8;
 
@@ -39,37 +42,31 @@ namespace mixins {
 	NAN_METHOD(ObjCMsgSend) {
 		NanScope();
 
-		/*Int32 msgid = 0;
+		SInt32 msgid = 0;
+		UInt8 bytes[] = { 0, 1 };
+		char *message = "Ring, ring.";
+		CFDataRef data = CFDataCreate(NULL, (const UInt8 *)message, strlen(message)+1);
 		CFDataRef outData = NULL;
 		CFTimeInterval sendTimeout = 1.0;
 		CFTimeInterval rcvTimeout = sendTimeout;
 
-		SInt32 returnCode = 0;
-		SInt32* returnCodePtr = &returnCode;
-
-		dispatch_block_t block = ^{
-			// Don't do any node stuff in this block without a HandleScope
-			// Preprare everything OUTSIDE the block
-			SInt32 code = CFMessagePortSendRequest(remote, msgid, data, sendTimeout, rcvTimeout, replyMode, &outData);
-		};
-
-		dispatch_sync(msg_queue, block);
+		SInt32 returnCode = CFMessagePortSendRequest(remote, msgid, data, sendTimeout, rcvTimeout, kCFRunLoopDefaultMode, &outData);
 		
 		// Deserialize outData*/
-		NanReturnUndefined();
+		const char* by = reinterpret_cast<const char*>(CFDataGetBytePtr(outData));
+		Handle<String> out = v8::String::New(by);
+		
+		NanReturnValue(NanNew<String>(out));
 	}
 
 	void InitMixins(Handle<Object> target) {
 		NanScope();
 		
 		msg_queue = dispatch_queue_create(NULL, NULL);
+		local = CFMessagePortCreateLocal(NULL, CFSTR(LOCAL_NAME), chocolat_callback, NULL, NULL);
+		remote = CFMessagePortCreateRemote(NULL, CFSTR(REMOTE_NAME));
 		
-		dispatch_async(msg_queue, ^{
-			local = CFMessagePortCreateLocal(NULL, CFSTR("chocolat-to-js"), chocolat_callback, NULL, NULL);
-			remote = CFMessagePortCreateRemote(NULL, CFSTR("js-to-chocolat"));
-			
-			CFMessagePortSetDispatchQueue(local, msg_queue);
-		});
+		CFMessagePortSetDispatchQueue(local, msg_queue);
 		
 		NODE_SET_METHOD(target, "objc_msgSend", ObjCMsgSend);
 	}

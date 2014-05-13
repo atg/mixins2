@@ -14,12 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef MIXINS_H_
-#define MIXINS_H_
-
 #include <node.h>
 #include <nan.h>
 
-NAN_METHOD(objc_msgSend);
-
-#endif  // MIXINS_H_
+NAN_METHOD(ObjCMsgSend);
