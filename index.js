@@ -15,5 +15,58 @@
 */
 
 var bindings = require('bindings')('bindings');
+var crypto = require('crypto');
+var chocolat_sendJSON = bindings.chocolat_sendJSON;
+var callbacks = {};
 
-exports.objc_msgSend = bindings.objc_msgSend;
+function random_key() {
+    var buf = crypto.randomBytes(16);
+    return buf.toString('base64');
+}
+
+function register_oneshot(cb) {
+    var key = random_key();
+    callbacks[key] = function() {
+        delete callbacks[key];
+        cb.apply({}, arguments);
+    };
+    return key;
+}
+
+function register_reusable(cb) {
+    var key = random_key();
+    callbacks[key] = function() {
+        delete callbacks[key];
+        cb.apply({}, arguments);
+    };
+    return key;
+}
+
+function unregister(key) {
+    delete callbacks[key];
+}
+
+function objc_msgSend(receiver, selector, args, options) {
+    var obj = {
+        "receiver": receiver,
+        "selector": selector,
+        "args": args,
+    };
+
+    for (var key in options) {
+        if (options.hasOwnProperty(key)) {
+            obj[key] = options[key];
+        }
+    }
+
+    var jsonIn = JSON.stringify(obj);
+    var jsonStrOut = chocolat_sendJSON(jsonIn);
+    var jsonOut = JSON.parse(jsonStrOut);
+
+    return jsonOut;
+}
+
+exports.objc_msgSend = objc_msgSend;
+exports.register_oneshot = register_oneshot;
+exports.register_reusable = register_reusable;
+exports.unregister = unregister;
